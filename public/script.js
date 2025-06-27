@@ -172,9 +172,7 @@ async function loadGallery() {
                             <div class="info-item">
                                 <i class="fas fa-calendar-alt"></i>
                                 <span>${formatDate(event.timestamp)}</span>
-                                <div class="date-tag">${formatDate(
-                                  event.timestamp
-                                )}</div>
+                                
                             </div>
                         </div>
                     </div>
