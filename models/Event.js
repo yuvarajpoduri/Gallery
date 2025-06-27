@@ -5,6 +5,7 @@ const eventSchema = new mongoose.Schema({
   location: String,
   images: [String],
   timestamp: Date,
+  likes: { type: Number, default: 0 },
 });
 
 module.exports = mongoose.model("Event", eventSchema);
