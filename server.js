@@ -22,12 +22,49 @@ mongoose
 // 📸 GET route to load events
 app.get("/events", async (req, res) => {
   try {
+    // Sort by timestamp in descending order (-1 = newest first)
     const events = await Event.find().sort({ timestamp: -1 });
-    console.log("📤 Sending event data:", events); // DEBUG LOG
     res.json(events);
-  } catch (err) {
-    console.error("❌ Failed to fetch events:", err);
-    res.status(500).json({ error: "Could not fetch events" });
+  } catch (error) {
+    console.error("Error fetching events:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Add this route to your Express.js server file
+
+// Route to handle like/unlike
+app.post("/events/:id/like", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { increment } = req.body;
+
+    const event = await Event.findById(id);
+    if (!event) {
+      return res.status(404).json({ error: "Event not found" });
+    }
+
+    // Initialize likes if it doesn't exist
+    if (event.likes === undefined) {
+      event.likes = 0;
+    }
+
+    // Increment or decrement likes
+    if (increment) {
+      event.likes += 1;
+    } else {
+      event.likes = Math.max(0, event.likes - 1); // Prevent negative likes
+    }
+
+    await event.save();
+
+    res.json({
+      success: true,
+      likes: event.likes,
+    });
+  } catch (error) {
+    console.error("Error updating likes:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
