@@ -101,16 +101,99 @@ function formatDate(timestamp) {
   return date.toLocaleDateString("en-US", options);
 }
 
-// Load gallery function
+// Add these functions to your existing script.js file
+
+// Like functionality
+// Add these functions to your script.js
+
+// Function to check if user has liked an event
+function hasUserLiked(eventId) {
+  const likedEvents = JSON.parse(localStorage.getItem("likedEvents") || "[]");
+  return likedEvents.includes(eventId);
+}
+
+// Function to toggle user's like status
+function toggleUserLike(eventId) {
+  let likedEvents = JSON.parse(localStorage.getItem("likedEvents") || "[]");
+
+  if (likedEvents.includes(eventId)) {
+    // Remove from liked events
+    likedEvents = likedEvents.filter((id) => id !== eventId);
+  } else {
+    // Add to liked events
+    likedEvents.push(eventId);
+  }
+
+  localStorage.setItem("likedEvents", JSON.stringify(likedEvents));
+  return !hasUserLiked(eventId); // Return new state (opposite of what it was)
+}
+
+// Updated toggleLike function
+async function toggleLike(eventId, likeBtn, likesCountElement) {
+  const wasLiked = hasUserLiked(eventId);
+
+  try {
+    const response = await fetch(`/events/${eventId}/like`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ increment: !wasLiked }),
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      // Toggle user's like status
+      toggleUserLike(eventId);
+      const isNowLiked = hasUserLiked(eventId);
+
+      // Update UI
+      if (isNowLiked) {
+        likeBtn.classList.add("liked");
+        likeBtn.querySelector("i").classList.remove("far");
+        likeBtn.querySelector("i").classList.add("fas");
+
+        // Add animation
+        likeBtn.classList.add("animate");
+        setTimeout(() => {
+          likeBtn.classList.remove("animate");
+        }, 600);
+
+        // Create floating heart
+        createFloatingHeart(likeBtn);
+      } else {
+        likeBtn.classList.remove("liked");
+        likeBtn.querySelector("i").classList.remove("fas");
+        likeBtn.querySelector("i").classList.add("far");
+      }
+
+      // Update likes count
+      likesCountElement.textContent = result.likes;
+    }
+  } catch (error) {
+    console.error("Error toggling like:", error);
+  }
+}
+
+// Updated loadGallery function to show correct like state
 async function loadGallery() {
   try {
     const res = await fetch("/events");
-    const events = await res.json();
+    let events = await res.json();
+
+    // Sort events by date (newest first)
+    events = events.sort(
+      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+    );
+
     const gallery = document.getElementById("gallery");
     gallery.innerHTML = "";
 
     events.forEach((event, eventIndex) => {
       const eventId = `event-${eventIndex}`;
+      const mongoEventId = event._id;
+      const isLiked = hasUserLiked(mongoEventId);
 
       // Create slideshow for this event
       createSlideshow(eventId, event.images);
@@ -164,6 +247,16 @@ async function loadGallery() {
                     </div>
                     <div class="card-content">
                         <h3>${event.event}</h3>
+                        <div class="likes-container">
+                            <button class="like-btn ${
+                              isLiked ? "liked" : ""
+                            }" onclick="toggleLike('${mongoEventId}', this, this.nextElementSibling)">
+                                <i class="${
+                                  isLiked ? "fas" : "far"
+                                } fa-heart"></i>
+                            </button>
+                            <span class="likes-count">${event.likes || 0}</span>
+                        </div>
                         <div class="card-info">
                             <div class="info-item">
                                 <i class="fas fa-map-marker-alt"></i>
@@ -172,7 +265,6 @@ async function loadGallery() {
                             <div class="info-item">
                                 <i class="fas fa-calendar-alt"></i>
                                 <span>${formatDate(event.timestamp)}</span>
-                                
                             </div>
                         </div>
                     </div>
@@ -185,6 +277,22 @@ async function loadGallery() {
     document.getElementById("gallery").innerHTML =
       '<p style="text-align: center; color: #ff6b6b; font-size: 1.2rem;">Error loading gallery. Please try again later.</p>';
   }
+}
+function createFloatingHeart(element) {
+  const heart = document.createElement("div");
+  heart.innerHTML = '<i class="fas fa-heart"></i>';
+  heart.className = "floating-heart";
+
+  const rect = element.getBoundingClientRect();
+  heart.style.position = "fixed";
+  heart.style.left = rect.left + rect.width / 2 + "px";
+  heart.style.top = rect.top + "px";
+
+  document.body.appendChild(heart);
+
+  setTimeout(() => {
+    document.body.removeChild(heart);
+  }, 1000);
 }
 
 // Load gallery when page loads
